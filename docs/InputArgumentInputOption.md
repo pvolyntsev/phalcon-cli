@@ -5,7 +5,7 @@ You can specify argument and option parameters in each task, you can add validat
 
 ## Arguments
 
-The `InputArgument` class allows you to set expected and get given arguments, arguments are defined as any parameter after the `task:action` text. Your task classes can define expected arguments, by using a method called `setup` like so
+The `\Danzabar\CLI\Input\InputArgument` class allows you to set expected and get given arguments, arguments are defined as any parameter after the `task:action` text. Your task classes can define expected arguments, by using a method called `setup` like so
 
 	Class Argument extends Task
 	{

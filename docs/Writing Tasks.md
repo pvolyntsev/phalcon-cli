@@ -3,7 +3,7 @@ Writing Tasks
 
 As if you was using regular Phalcon CLI tools the tasks must have Task appended to their class name, for example if you had a Git task, you would call it GitTask. With this in mind, lets look at how we write tasks...
 
-	Class BasicTask extends \Danzabar\CLI\Tasks\Tasks
+	Class BasicTask extends \Danzabar\CLI\Tasks\Task
 	{
 		// This will be the task name defined in the library.
 		protected $name = 'basic';

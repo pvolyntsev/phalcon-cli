@@ -15,7 +15,7 @@ The above format can be used by wrapping your string in `<Name></Name>`, since t
 
 ### Default Formats
 
-The class sets up 3 default formats that you can use, or overwrite if you wish:
+The class sets up 4 default formats that you can use, or overwrite if you wish:
 
 	<Question></Question> 		- Foreground Cyan
 	<Info></Info>				- Foreground Cyan
