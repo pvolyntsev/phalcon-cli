@@ -23,8 +23,11 @@ You will first need an application to use the CLI tools with. The following is a
 	$app = new Danzabar\CLI\Application;
 	$app->setDI($di);
 
-	// Add your commands!
+	// Add your commands one by one!
 	$app->add(new Task);
+
+	// Or several commands from specific folder
+	$app->addTaskDir(__DIR__.'/tasks');
 
 	try {
 

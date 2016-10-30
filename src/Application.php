@@ -188,6 +188,37 @@ class Application
     }
 
     /**
+     * Adds a command to the library
+     *
+     * @return Application
+     */
+    public function addTaskDir($path)
+    {
+        $dirIterator = new \RecursiveDirectoryIterator($path, \FilesystemIterator::SKIP_DOTS);
+        $fileIterator = new \RecursiveIteratorIterator($dirIterator);
+
+        foreach ($fileIterator as $file)
+        {
+            /** @var $file \SplFileInfo */
+
+            $classes = PhpFileClassReader::getPHPFileClasses($file->getRealPath());
+            foreach($classes as $className)
+            {
+                $inst = new $className;
+                if ($inst instanceof \Danzabar\CLI\Tasks\Task)
+                {
+                    $tasks = $this->prepper
+                        ->load($className)
+                        ->describe();
+
+                    $this->library->add(['task' => $tasks, 'class' => $inst]);
+                }
+            }
+        }
+
+        return $this;
+    }
+
      * Find a command by name
      *
      * @return Object
