@@ -9,7 +9,6 @@ use Danzabar\CLI\Tasks\TaskPrepper;
 use Danzabar\CLI\Tasks\TaskLibrary;
 use Danzabar\CLI\Tasks\Helpers;
 use Danzabar\CLI\Tasks\Utility\Help;
-use Phalcon\DI;
 use Danzabar\CLI\Tools\PhpFileClassReader;
 
 /**
@@ -19,22 +18,8 @@ use Danzabar\CLI\Tools\PhpFileClassReader;
  * @subpackage Application
  * @author Dan Cox
  */
-class Application
+class Application extends \Phalcony\Application
 {
-    /**
-     * The Dependancy object
-     *
-     * @var Object
-     */
-    protected $di;
-
-    /**
-     * Instance of the dispatcher
-     *
-     * @var Object
-     */
-    protected $dispatcher;
-
     /**
      * Instance of the Helpers class
      *
@@ -78,15 +63,29 @@ class Application
     protected $version;
 
     /**
-     * The phalcon console object
-     *
-     * @return void
+     * @param string $env
+     * @param array $configuration
+     * @param \Phalcon\DiInterface $di
+     * @throws \Exception
      */
-    public function __construct($DI = null, $dispatcher = null, $library = null)
+    public function __construct($env, array $configuration, \Phalcon\DiInterface $di = null)
     {
-        $this->di = (!is_null($DI) ? $DI : new DI);
-        $this->dispatcher = (!is_null($dispatcher) ? $dispatcher : new Dispatcher);
-        $this->library = (!is_null($library) ? $library : new TaskLibrary);
+        if (is_null($di))
+            $di = new \Phalcon\DI\FactoryDefault\CLI;
+
+        $this->prepper = new TaskPrepper($this->di);
+        $this->helpers = new Helpers($this->di);
+        $this->library = new TaskLibrary;
+
+        parent::__construct($env, $configuration, $di);
+    }
+
+    public function bootstrap()
+    {
+        parent::bootstrap();
+
+        if (!$this->di->get('dispatcher'))
+            $this->di->setShared('dispatcher', new Dispatcher);
 
         $this->setUpDispatcherDefaults();
 
@@ -95,13 +94,19 @@ class Application
         $this->di->setShared('input', new Input);
         $this->di->setShared('console', $this);
 
-        $this->prepper = new TaskPrepper($this->di);
-        $this->helpers = new Helpers($this->di);
         $this->registerDefaultHelpers();
 
         $this->di->setShared('helpers', $this->helpers);
 
         $this->addDefaultCommands();
+
+        return $this;
+    }
+
+    public function setTaskLibrary(TaskLibrary $library)
+    {
+        $this->library = $library;
+        return $this;
     }
 
     /**

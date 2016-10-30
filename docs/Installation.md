@@ -17,11 +17,17 @@ You will first need an application to use the CLI tools with. The following is a
 	#!/usr/bin/env php
 	<?php
 
-	$di = ''; // Set your phalcon DI up
+	use Danzabar\CLI\Application;
 
+	define('APPLICATION_ENV', getenv('APPLICATION_ENV') ? getenv('APPLICATION_ENV') : 'development');
 
-	$app = new Danzabar\CLI\Application;
-	$app->setDI($di);
+	// Standart Dependency Injection/Service Location for CLI
+	$di = new \Phalcon\DI\FactoryDefault\CLI();
+
+	// Load configuration ( @see  )
+	$config = include "/path/to/config.php";
+
+	$app = new Application(APPLICATION_ENV, $config, $di);
 
 	// Add your commands one by one!
 	$app->add(new Task);
@@ -34,7 +40,7 @@ You will first need an application to use the CLI tools with. The following is a
 
 	try {
 
-		$app->start($argv);
+		$app->bootstrap()->start($argv);
 
 	} catch (\Exception $e) {
 

@@ -7,10 +7,16 @@
 			"name":"Daniel Cox",
 			"email":"danzabian@gmail.com",
 			"homepage":"http://www.valeska.co.uk"
+		},
+		{
+			"name":"Pavel Volyntsev",
+			"email":"pavel.volyntsev@gmail.com",
+			"homepage":"http://copist.ru"
 		}
 	],
 	"require": {
-		"symfony/process": "2.7.*@dev"
+		"symfony/process": "2.7.*@dev",
+		"ovr/phalcony": "~0.2.4"
 	},
 	"require-dev": {
         "symfony/yaml": "2.7.*@dev",
