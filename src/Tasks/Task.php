@@ -2,7 +2,12 @@
 
 namespace Danzabar\CLI\Tasks;
 
+use Danzabar\CLI\Input\InputOption;
 use \Phalcon\CLI\Task as PhalTask;
+use \Danzabar\CLI\Input\InputArgument;
+use \Danzabar\CLI\Output\Output;
+use \Danzabar\CLI\Input\Input;
+use Danzabar\CLI\Tasks\Helpers;
 
 /**
  * The command class deals with executing CLI based commands, through phalcon task
@@ -10,6 +15,12 @@ use \Phalcon\CLI\Task as PhalTask;
  * @package CLI
  * @subpackage Command
  * @author Dan Cox
+ *
+ * @property InputArgument $argument
+ * @property InputOption $option
+ * @property Output $output
+ * @property Input $input
+ * @property Helpers $helpers
  */
 class Task extends PhalTask
 {

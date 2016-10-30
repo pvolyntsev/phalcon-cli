@@ -18,7 +18,7 @@ class TaskPrepper
     /**
      * The reflection instance
      *
-     * @var Object
+     * @var \ReflectionClass
      */
     protected $reflection;
 
@@ -39,14 +39,14 @@ class TaskPrepper
     /**
      * Instance of the Memory Annotation Engine
      *
-     * @var Object
+     * @var Memory
      */
     protected $annotation;
 
     /**
      * Current instance of the annotation reader
      *
-     * @var Object
+     * @var \Phalcon\Annotations\Reflection
      */
     protected $reader;
 
@@ -167,7 +167,7 @@ class TaskPrepper
     /**
      * Gets the setup method used by the task
      *
-     * @return ReflectionMethod|NULL
+     * @return \ReflectionMethod|NULL
      */
     public function getSetupMethod($action)
     {
@@ -240,7 +240,7 @@ class TaskPrepper
     /**
      * Loads params and splits them into arguments and options
      *
-     * @return void
+     * @return TaskPrepper
      */
     public function loadParams(array $params)
     {
