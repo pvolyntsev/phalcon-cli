@@ -10,6 +10,7 @@ use Danzabar\CLI\Tasks\TaskLibrary;
 use Danzabar\CLI\Tasks\Helpers;
 use Danzabar\CLI\Tasks\Utility\Help;
 use Phalcon\DI;
+use Danzabar\CLI\Tools\PhpFileClassReader;
 
 /**
  * The Application class for CLI commands
