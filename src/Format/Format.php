@@ -48,9 +48,10 @@ class Format
      */
     public static function format($str)
     {
-        preg_match('/<[A-Za-z0-9]+?>/', $str, $matches);
+        if (false === preg_match_all('/<[A-Za-z0-9]+?>/', $str, $matches))
+            return $str;
 
-        foreach ($matches as $match) {
+        foreach ($matches[0] as $match) {
             $keyword = str_replace(array('<', '>'), '', $match);
 
             $format = static::$collection->get(strtolower($keyword));
