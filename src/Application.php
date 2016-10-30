@@ -201,25 +201,37 @@ class Application
         foreach ($fileIterator as $file)
         {
             /** @var $file \SplFileInfo */
+            $this->addTaskFile($file->getRealPath());
+        }
 
-            $classes = PhpFileClassReader::getPHPFileClasses($file->getRealPath());
-            foreach($classes as $className)
+        return $this;
+    }
+
+    /**
+     * Adds commands from file to the library
+     *
+     * @return Application
+     */
+    public function addTaskFile($path)
+    {
+        $classes = PhpFileClassReader::getPHPFileClasses($path);
+        foreach($classes as $className)
+        {
+            $inst = new $className;
+            if ($inst instanceof \Danzabar\CLI\Tasks\Task)
             {
-                $inst = new $className;
-                if ($inst instanceof \Danzabar\CLI\Tasks\Task)
-                {
-                    $tasks = $this->prepper
-                        ->load($className)
-                        ->describe();
+                $tasks = $this->prepper
+                    ->load($className)
+                    ->describe();
 
-                    $this->library->add(['task' => $tasks, 'class' => $inst]);
-                }
+                $this->library->add(['task' => $tasks, 'class' => $inst]);
             }
         }
 
         return $this;
     }
 
+    /**
      * Find a command by name
      *
      * @return Object

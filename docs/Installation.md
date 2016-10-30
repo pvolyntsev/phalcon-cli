@@ -26,6 +26,9 @@ You will first need an application to use the CLI tools with. The following is a
 	// Add your commands one by one!
 	$app->add(new Task);
 
+	// Or command from specific PHP file
+	$app->addTaskFile(__DIR__.'/tasks/TaskCommand.php');
+
 	// Or several commands from specific folder
 	$app->addTaskDir(__DIR__.'/tasks');
 
