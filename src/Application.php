@@ -2,6 +2,7 @@
 
 namespace Danzabar\CLI;
 
+use Danzabar\CLI\Tasks\Task;
 use Phalcon\CLI\Dispatcher;
 use Danzabar\CLI\Output\Output;
 use Danzabar\CLI\Input\Input;
@@ -10,6 +11,9 @@ use Danzabar\CLI\Tasks\TaskLibrary;
 use Danzabar\CLI\Tasks\Helpers;
 use Danzabar\CLI\Tasks\Utility\Help;
 use Danzabar\CLI\Tools\PhpFileClassReader;
+use Phalcony\Stdlib\Hydrator\ClassMethods;
+use Phalcon\Events\Manager as EventsManager;
+use InvalidArgumentException;
 
 /**
  * The Application class for CLI commands
@@ -17,13 +21,31 @@ use Danzabar\CLI\Tools\PhpFileClassReader;
  * @package CLI
  * @subpackage Application
  * @author Dan Cox
+ *
+ * Application class rewritten to be compatible with https://github.com/ovr/phalcony about different environments and module architecture
+ * @see \Phalcony\Application
  */
-class Application extends \Phalcony\Application
+class Application extends \Phalcon\Application
 {
+    const ENV_PRODUCTION = 'production';
+    const ENV_STAGING = 'staging';
+    const ENV_TESTING = 'testing';
+    const ENV_DEVELOPMENT = 'development';
+
+    /**
+     * @var array
+     */
+    protected $configuration;
+
+    /**
+     * @var string
+     */
+    protected $env;
+
     /**
      * Instance of the Helpers class
      *
-     * @var Object
+     * @var Helpers
      */
     protected $helpers;
 
@@ -37,14 +59,14 @@ class Application extends \Phalcony\Application
     /**
      * The task Prepper instance
      *
-     * @var Object
+     * @var TaskPrepper
      */
     protected $prepper;
 
     /**
      * Instance of the task library
      *
-     * @var Object
+     * @var TaskLibrary
      */
     protected $library;
 
@@ -70,19 +92,144 @@ class Application extends \Phalcony\Application
      */
     public function __construct($env, array $configuration, \Phalcon\DiInterface $di = null)
     {
+        $this->env = strtolower($env);
+        $this->configuration = $configuration;
+
+        switch ($this->env) {
+            case self::ENV_PRODUCTION:
+            case self::ENV_STAGING:
+                ini_set('display_errors', 0);
+                ini_set('display_startup_errors', 0);
+                error_reporting(0);
+                break;
+            case self::ENV_TESTING:
+            case self::ENV_DEVELOPMENT:
+                ini_set('display_errors', 1);
+                ini_set('display_startup_errors', 1);
+                error_reporting(-1);
+                break;
+            default:
+                throw new \Exception('Wrong application $env passed: ' . $env);
+        }
+
         if (is_null($di))
             $di = new \Phalcon\DI\FactoryDefault\CLI;
 
-        $this->prepper = new TaskPrepper($this->di);
-        $this->helpers = new Helpers($this->di);
+        $this->prepper = new TaskPrepper($di);
+        $this->helpers = new Helpers($di);
         $this->library = new TaskLibrary;
 
-        parent::__construct($env, $configuration, $di);
+        parent::__construct($di);
     }
 
+    /**
+     * Register di services
+     *
+     * @throws \Exception
+     */
+    public function registerServices()
+    {
+        $di = $this->getDI();
+
+        if (isset($this->configuration['services'])) {
+            if (!is_array($this->configuration['services'])) {
+                throw new \Exception('Config[services] must be an array');
+            }
+
+            if (count($this->configuration['services']) > 0) {
+                foreach ($this->configuration['services'] as $serviceName => $serviceParameters) {
+                    $class = $serviceParameters['class'];
+
+                    $shared = false;
+                    $service = false;
+
+                    if (isset($serviceParameters['shared'])) {
+                        $shared = (boolean) $serviceParameters['shared'];
+                    }
+
+                    if (is_callable($class)) {
+                        $shared = true;
+                        $service = $class($this);
+                    } else if (is_object($class)) {
+                        $shared = true;
+                        $service = $class;
+                    } else if (isset($serviceParameters['__construct'])) {
+                        $shared = true;
+
+                        if (!is_array($serviceParameters)) {
+                            throw new \Exception('Parameters for service : "' . $serviceName . '" must be array');
+                        }
+
+                        $reflector = new \ReflectionClass($class);
+                        $service = $reflector->newInstanceArgs($serviceParameters['__construct']);
+                    } else {
+                        if ($shared) {
+                            $service = new $class();
+                        } else {
+                            $service = $class;
+                        }
+                    }
+
+                    if (isset($serviceParameters['parameters'])) {
+                        if ($shared === false) {
+                            throw new \Exception('Service: "' . $serviceName . '" with parameters must be shared');
+                        }
+
+                        $service = ClassMethods::hydrate($serviceParameters['parameters'], $service);
+
+                        $di->set($serviceName, $service, $shared);
+                    }
+
+                    $di->set($serviceName, $service, $shared);
+                }
+            }
+        }
+    }
+
+    /**
+     * Register loader
+     */
+    protected function registerLoader()
+    {
+        $config = &$this->configuration;
+
+        $loader = new \Phalcon\Loader();
+
+        if (isset($config['application']['registerNamespaces'])) {
+            $loadNamespaces = $config['application']['registerNamespaces'];
+        } else {
+            $loadNamespaces = array();
+        }
+
+        foreach ($config['application']['modules'] as $module => $enabled) {
+            $moduleName = ucfirst($module);
+            $loadNamespaces[$moduleName . '\Model'] = APPLICATION_PATH . '/modules/' . $module . '/models/';
+            $loadNamespaces[$moduleName . '\Service'] = APPLICATION_PATH . '/modules/' . $module . '/services/';
+            $loadNamespaces[$moduleName . '\Task'] = APPLICATION_PATH . '/modules/' . $module . '/tasks/';
+        }
+
+        if (isset($config['application']['registerDirs'])) {
+            $loader->registerDirs($config['application']['registerDirs']);
+        }
+
+        $loader->registerNamespaces($loadNamespaces)
+            ->register();
+    }
+
+    /**
+     * @return $this
+     * @throws \Exception
+     */
     public function bootstrap()
     {
-        parent::bootstrap();
+        $this->registerLoader();
+        $this->registerModules($this->configuration['application']['modules']);
+
+        $eventsManager = new EventsManager();
+        $this->setEventsManager($eventsManager);
+
+        $this->registerServices();
+        $this->di->set('application', $this, true);
 
         if (!$this->di->get('dispatcher'))
             $this->di->setShared('dispatcher', new Dispatcher);
@@ -147,12 +294,51 @@ class Application extends \Phalcony\Application
         $this->helpers->registerHelper('table', 'Danzabar\CLI\Tasks\Helpers\Table');
     }
 
+    public function registerModules(array $modules, $merge = false)
+    {
+        parent::registerModules($modules, $merge);
+
+        foreach ($this->getModules() as $key => $module) {
+            if (isset($module['tasks']))
+            {
+                $moduleTasks = $module['tasks'];
+
+                if (is_string($moduleTasks) && is_dir($moduleTasks))
+                {
+                    $this->addTaskDir($moduleTasks);
+                    continue;
+                } elseif (is_string($moduleTasks) && is_file($moduleTasks))
+                {
+                    $moduleTasks = include_once $moduleTasks;
+                }
+
+                if (is_array($moduleTasks))
+                {
+                    foreach ($moduleTasks as $task)
+                    {
+                        $inst = null;
+                        if (is_string($task) && class_exists($task))
+                        {
+                            $inst = new $task;
+                            if ($inst instanceof Task)
+                                $this->add($inst);
+                        } elseif (is_string($task) && is_file($task))
+                            $this->addTaskFile($task);
+                    }
+                }
+            }
+        }
+
+        return $this;
+    }
+
+
     /**
      * Start the app
      *
      * @return Output
      */
-    public function start($args = array())
+    public function handle($args = array())
     {
         $arg = $this->formatArgs($args);
 
@@ -239,7 +425,7 @@ class Application extends \Phalcony\Application
     /**
      * Find a command by name
      *
-     * @return Object
+     * @return \Danzabar\CLI\Tasks\Task
      */
     public function find($name)
     {
@@ -249,7 +435,7 @@ class Application extends \Phalcony\Application
     /**
      * Format the arguments into a useable state
      *
-     * @return Array
+     * @return array
      */
     public function formatArgs($args)
     {
@@ -316,19 +502,9 @@ class Application extends \Phalcony\Application
     }
 
     /**
-     * Returns the DI
-     *
-     * @return Object
-     */
-    public function getDI()
-    {
-        return $this->di;
-    }
-
-    /**
      * Gets the value of the name
      *
-     * @return String
+     * @return string
      */
     public function getName()
     {
@@ -338,7 +514,7 @@ class Application extends \Phalcony\Application
     /**
      * Sets the value of name
      *
-     * @param name $name The name of the CLI
+     * @param string $name The name of the CLI
      *
      * @return Application
      */
@@ -351,7 +527,7 @@ class Application extends \Phalcony\Application
     /**
      * Gets the value of version
      *
-     * @return version
+     * @return string
      */
     public function getVersion()
     {
@@ -361,7 +537,7 @@ class Application extends \Phalcony\Application
     /**
      * Sets the value of version
      *
-     * @param version $version The cli version
+     * @param string $version The cli version
      *
      * @return Application
      */
@@ -369,5 +545,36 @@ class Application extends \Phalcony\Application
     {
         $this->version = $version;
         return $this;
+    }
+
+    /**
+     * @return string
+     */
+    public function getEnv()
+    {
+        return $this->env;
+    }
+
+    /**
+     * @return array
+     */
+    public function getConfiguration()
+    {
+        return $this->configuration;
+    }
+
+    /**
+     * Get custom service parameters
+     *
+     * @param $serviceName
+     * @return mixed
+     */
+    public function getParameters($serviceName)
+    {
+        if (isset($this->configuration['parameters'][$serviceName])) {
+            return $this->configuration['parameters'][$serviceName];
+        }
+
+        throw new InvalidArgumentException('Wrong service : '.$serviceName.' passed to fetch from parameters');
     }
 } // END class Application
