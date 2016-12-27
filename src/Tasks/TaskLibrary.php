@@ -47,7 +47,7 @@ class TaskLibrary
     /**
      * Find a command by task:action name
      *
-     * @return Object
+     * @return \Danzabar\CLI\Tasks\Task
      */
     public function find($name)
     {
