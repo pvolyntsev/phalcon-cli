@@ -61,7 +61,7 @@ class Input implements InputInterface
     /**
      * Read the input stream
      *
-     * @return void
+     * @return bool
      */
     public function read()
     {
@@ -73,7 +73,7 @@ class Input implements InputInterface
     /**
      * Returns the raw captured input
      *
-     * @return void
+     * @return string
      */
     public function getInput()
     {
